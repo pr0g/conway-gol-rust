@@ -1,0 +1,7 @@
+[package]
+name = "gol-tdd"
+version = "0.1.0"
+authors = ["Tom Hulton-Harrop <tom.hultonharrop@gmail.com>"]
+edition = "2018"
+
+[dependencies]

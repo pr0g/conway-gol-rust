@@ -15,8 +15,8 @@ fn main() {
     loop {
         board.print(&normal_printer);
         board.update();
-        let sixty_millis = time::Duration::from_millis(260);
-        thread::sleep(sixty_millis);
+        let delay = time::Duration::from_millis(260);
+        thread::sleep(delay);
     }
 }
 

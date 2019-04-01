@@ -10,10 +10,10 @@ fn main() {
     board.turn_on(11, 21);
     board.turn_on(12, 20);
 
-    let mut normal_printer = PrintNormal {};
+    let normal_printer = PrintNormal {};
 
     loop {
-        board.print(&mut normal_printer);
+        board.print(&normal_printer);
         board.update();
         let sixty_millis = time::Duration::from_millis(260);
         thread::sleep(sixty_millis);
@@ -21,7 +21,7 @@ fn main() {
 }
 
 trait Print {
-    fn print_char(&mut self, character: char);
+    fn print_char(&self, character: char);
 }
 
 #[derive(Clone)]
@@ -33,25 +33,8 @@ struct Board {
 
 struct PrintNormal;
 impl Print for PrintNormal {
-    fn print_char(&mut self, character: char) {
+    fn print_char(&self, character: char) {
         print!("{}", character);
-    }
-}
-
-struct PrintChecker {
-    characters: Vec<char>,
-}
-
-impl PrintChecker {
-    fn new() -> Self {
-        let characters = Vec::new();
-        PrintChecker { characters }
-    }
-}
-
-impl Print for PrintChecker {
-    fn print_char(&mut self, character: char) {
-        self.characters.push(character);
     }
 }
 
@@ -134,7 +117,7 @@ impl Board {
         }
     }
 
-    fn print(&self, printer: &mut Print) {
+    fn print(&self, printer: &Print) {
         for row in 0..self.rows {
             for col in 0..self.cols {
                 if self.is_on(row, col) {
@@ -149,138 +132,162 @@ impl Board {
     }
 }
 
-#[test]
-fn cell_has_correct_number_of_neighbours() {
-    let mut board = Board::new(10, 10);
-    board.turn_on(0, 1);
-    board.turn_on(1, 1);
-    board.turn_on(1, 0);
-    assert_eq!(board.get_neighbours(0, 0), 3);
-    assert_eq!(board.get_neighbours(5, 5), 0);
-}
+mod tests {
+    use super::{safe, Board, Print};
+    #[test]
+    fn cell_has_correct_number_of_neighbours() {
+        let mut board = Board::new(10, 10);
+        board.turn_on(0, 1);
+        board.turn_on(1, 1);
+        board.turn_on(1, 0);
+        assert_eq!(board.get_neighbours(0, 0), 3);
+        assert_eq!(board.get_neighbours(5, 5), 0);
+    }
 
-#[test]
-fn cell_dies_with_fewer_than_two_neighbours() {
-    let mut board = Board::new(10, 10);
-    board.turn_on(0, 0);
-    board.turn_on(0, 1);
-    board.update();
-    assert_eq!(board.is_on(0, 1), false);
-}
+    #[test]
+    fn cell_dies_with_fewer_than_two_neighbours() {
+        let mut board = Board::new(10, 10);
+        board.turn_on(0, 0);
+        board.turn_on(0, 1);
+        board.update();
+        assert_eq!(board.is_on(0, 1), false);
+    }
 
-#[test]
-fn cell_lives_with_two_neighbours() {
-    let mut board = Board::new(10, 10);
-    board.turn_on(0, 0);
-    board.turn_on(0, 1);
-    board.turn_on(0, 2);
-    board.update();
-    assert!(board.is_on(0, 1));
-}
+    #[test]
+    fn cell_lives_with_two_neighbours() {
+        let mut board = Board::new(10, 10);
+        board.turn_on(0, 0);
+        board.turn_on(0, 1);
+        board.turn_on(0, 2);
+        board.update();
+        assert!(board.is_on(0, 1));
+    }
 
-#[test]
-fn cell_dies_with_more_than_three_neighbours() {
-    let mut board = Board::new(10, 10);
-    board.turn_on(0, 0);
-    board.turn_on(0, 1);
-    board.turn_on(0, 2);
-    board.turn_on(1, 0);
-    board.turn_on(1, 1);
-    board.update();
-    assert!(board.is_off(1, 1));
-}
+    #[test]
+    fn cell_dies_with_more_than_three_neighbours() {
+        let mut board = Board::new(10, 10);
+        board.turn_on(0, 0);
+        board.turn_on(0, 1);
+        board.turn_on(0, 2);
+        board.turn_on(1, 0);
+        board.turn_on(1, 1);
+        board.update();
+        assert!(board.is_off(1, 1));
+    }
 
-#[test]
-fn cell_lives_with_three_neighbours() {
-    let mut board = Board::new(10, 10);
-    board.turn_on(0, 0);
-    board.turn_on(0, 1);
-    board.turn_on(0, 2);
-    board.turn_on(1, 1);
-    board.update();
-    assert!(board.is_on(0, 1));
-}
+    #[test]
+    fn cell_lives_with_three_neighbours() {
+        let mut board = Board::new(10, 10);
+        board.turn_on(0, 0);
+        board.turn_on(0, 1);
+        board.turn_on(0, 2);
+        board.turn_on(1, 1);
+        board.update();
+        assert!(board.is_on(0, 1));
+    }
 
-#[test]
-fn cell_turns_on_with_three_neighbours() {
-    let mut board = Board::new(10, 10);
-    board.turn_on(0, 0);
-    board.turn_on(0, 1);
-    board.turn_on(0, 2);
-    board.update();
-    assert!(board.is_on(1, 1));
-}
+    #[test]
+    fn cell_turns_on_with_three_neighbours() {
+        let mut board = Board::new(10, 10);
+        board.turn_on(0, 0);
+        board.turn_on(0, 1);
+        board.turn_on(0, 2);
+        board.update();
+        assert!(board.is_on(1, 1));
+    }
 
-#[test]
-fn change_cell_to_alive() {
-    let mut board = Board::new(10, 10);
-    board.turn_on(0, 0);
-    assert_eq!(board.is_on(0, 0), true);
-}
+    #[test]
+    fn change_cell_to_alive() {
+        let mut board = Board::new(10, 10);
+        board.turn_on(0, 0);
+        assert_eq!(board.is_on(0, 0), true);
+    }
 
-#[test]
-fn change_cell_to_dead() {
-    let mut board = Board::new(10, 10);
-    let r = 3;
-    let c = 4;
-    assert_eq!(board.is_off(r, c), true);
-    board.turn_on(r, c);
-    assert_eq!(board.is_off(r, c), false);
-    assert_eq!(board.is_on(r, c), true);
-    board.turn_off(r, c);
-    assert_eq!(board.is_off(r, c), true);
-}
-
-#[test]
-fn ensure_cells_do_not_match() {
-    let mut board = Board::new(10, 10);
-
-    {
+    #[test]
+    fn change_cell_to_dead() {
+        let mut board = Board::new(10, 10);
         let r = 3;
         let c = 4;
         assert_eq!(board.is_off(r, c), true);
         board.turn_on(r, c);
         assert_eq!(board.is_off(r, c), false);
         assert_eq!(board.is_on(r, c), true);
-    }
-
-    {
-        let r = 6;
-        let c = 7;
+        board.turn_off(r, c);
         assert_eq!(board.is_off(r, c), true);
-        board.turn_on(r, c);
-        assert_eq!(board.is_off(r, c), false);
-        assert_eq!(board.is_on(r, c), true);
     }
-}
 
-#[test]
-fn board_initialized_off() {
-    let board = Board::new(10, 10);
-    for r in 0..10 {
-        for c in 0..10 {
-            assert_eq!(board.is_on(r, c), false);
+    #[test]
+    fn ensure_cells_do_not_match() {
+        let mut board = Board::new(10, 10);
+
+        {
+            let r = 3;
+            let c = 4;
+            assert_eq!(board.is_off(r, c), true);
+            board.turn_on(r, c);
+            assert_eq!(board.is_off(r, c), false);
+            assert_eq!(board.is_on(r, c), true);
+        }
+
+        {
+            let r = 6;
+            let c = 7;
+            assert_eq!(board.is_off(r, c), true);
+            board.turn_on(r, c);
+            assert_eq!(board.is_off(r, c), false);
+            assert_eq!(board.is_on(r, c), true);
         }
     }
-}
 
-#[test]
-fn value_is_always_safe() {
-    let safe_index_1 = safe(-1, 10);
-    assert_eq!(safe_index_1, 9);
-    let safe_index_2 = safe(11, 10);
-    assert_eq!(safe_index_2, 1);
-}
+    #[test]
+    fn board_initialized_off() {
+        let board = Board::new(10, 10);
+        for r in 0..10 {
+            for c in 0..10 {
+                assert_eq!(board.is_on(r, c), false);
+            }
+        }
+    }
 
-#[test]
-fn board_is_printed() {
-    let board = Board::new(5, 5);
-    let mut print_checker = PrintChecker::new();
-    board.print(&mut print_checker);
+    #[test]
+    fn value_is_always_safe() {
+        let safe_index_1 = safe(-1, 10);
+        assert_eq!(safe_index_1, 9);
+        let safe_index_2 = safe(11, 10);
+        assert_eq!(safe_index_2, 1);
+    }
 
-    assert_eq!(print_checker.characters.len(), 25);
+    use std::cell::RefCell;
 
-    for &character in print_checker.characters.iter() {
-        assert_eq!(character, '*');
+    struct PrintChecker {
+        characters: RefCell<Vec<char>>,
+    }
+
+    impl PrintChecker {
+        fn new() -> Self {
+            let characters = Vec::new();
+            PrintChecker {
+                characters: RefCell::new(characters),
+            }
+        }
+    }
+
+    impl Print for PrintChecker {
+        fn print_char(&self, character: char) {
+            self.characters.borrow_mut().push(character);
+        }
+    }
+
+    #[test]
+    fn board_is_printed() {
+        let board = Board::new(5, 5);
+        let print_checker = PrintChecker::new();
+        board.print(&print_checker);
+
+        assert_eq!(print_checker.characters.borrow().len(), 25);
+
+        for &character in print_checker.characters.borrow().iter() {
+            assert_eq!(character, '*');
+        }
     }
 }

@@ -102,18 +102,36 @@ impl Board {
     }
 
     fn update(&mut self) {
-        let prev = self.clone();
+        struct Change {
+            row: usize,
+            col: usize,
+            alive: bool,
+        };
+
+        let mut changes = Vec::new();
         for row in 0..self.rows {
             for col in 0..self.cols {
-                let neighbours = prev.get_neighbours(row, col);
+                let neighbours = self.get_neighbours(row, col);
                 if self.is_on(row, col) && neighbours < 2 || neighbours > 3 {
-                    self.turn_off(row, col);
+                    changes.push(Change {
+                        row,
+                        col,
+                        alive: false,
+                    });
                 } else {
                     if self.is_off(row, col) && neighbours == 3 {
-                        self.turn_on(row, col);
+                        changes.push(Change {
+                            row,
+                            col,
+                            alive: true,
+                        });
                     }
                 }
             }
+        }
+
+        for c in &changes {
+            self.change(c.row, c.col, c.alive);
         }
     }
 
@@ -132,6 +150,7 @@ impl Board {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::{safe, Board, Print};
     #[test]
